@@ -15,8 +15,8 @@ OPENROUTER_MODEL_MAP = {
     # ВНИМАНИЕ: Следующие модели могут не работать или требовать оплаты
     # Проверьте актуальные идентификаторы на https://openrouter.ai/models
     # И найдите модели с пометкой "free" для бесплатного использования
-    'OpenAI GPT-OSS': 'openai/gpt-3.5-turbo',  # Может требовать оплату
-    'Qwen3': 'qwen/qwen-2.5-7b-instruct'  # Может требовать оплату
+    'OpenAI GPT-OSS': 'openai/gpt-oss-120b:free',  # Может требовать оплату
+    'Qwen3': 'qwen/qwen3-coder:free'  # Может требовать оплату
 }
 
 

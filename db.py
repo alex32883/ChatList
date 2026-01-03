@@ -78,6 +78,12 @@ def init_database():
     """)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(key)")
     
+    # Деактивируем старые модели OpenAI и Groq (если они существуют)
+    cursor.execute("""
+        UPDATE models SET is_active = 0 
+        WHERE model_type IN ('openai', 'groq')
+    """)
+    
     # Инициализация моделей по умолчанию (только бесплатные модели OpenRouter)
     cursor.execute("""
         INSERT OR IGNORE INTO models (name, api_url, api_id, model_type, is_active) VALUES

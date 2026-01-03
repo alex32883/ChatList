@@ -209,3 +209,4 @@ INSERT OR IGNORE INTO models (name, api_url, api_id, model_type, is_active) VALU
 ('Llama 3 70B', 'https://api.groq.com/openai/v1/chat/completions', 'GROQ_API_KEY', 'groq', 1);
 ```
 
+

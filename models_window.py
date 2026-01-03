@@ -269,3 +269,4 @@ class ModelEditDialog(QDialog):
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
 
+

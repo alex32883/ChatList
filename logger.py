@@ -64,3 +64,4 @@ def log_info(message: str):
     """Логирует информационное сообщение."""
     logger.info(message)
 
+
