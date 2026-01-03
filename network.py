@@ -227,6 +227,9 @@ def send_request(model_type: str, model_name: str, prompt: str, api_key: str,
         APIError: При ошибке запроса или неподдерживаемом типе API
     """
     if model_type == 'openai':
+        # Предупреждение: модели OpenAI требуют правильные идентификаторы (gpt-4, gpt-3.5-turbo)
+        # и прямой доступ к OpenAI API. Рекомендуется использовать OpenRouter вместо этого.
+        logger.log_info(f"Using OpenAI API directly for model: {model_name}")
         return send_openai_request(model_name, prompt, api_key, timeout)
     elif model_type == 'groq':
         return send_groq_request(model_name, prompt, api_key, timeout)

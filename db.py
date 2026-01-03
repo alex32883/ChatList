@@ -79,18 +79,23 @@ def init_database():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(key)")
     
     # Деактивируем старые модели OpenAI и Groq (если они существуют)
+    # Это важно, так как они требуют прямого доступа к API и могут вызывать ошибки 404
     cursor.execute("""
         UPDATE models SET is_active = 0 
         WHERE model_type IN ('openai', 'groq')
     """)
     
-    # Инициализация моделей по умолчанию (только бесплатные модели OpenRouter)
+    # Убеждаемся, что модели OpenAI не могут быть случайно активированы
+    # Проверяем и деактивируем их при каждой инициализации
+    
+    # Инициализация моделей по умолчанию (только рабочие бесплатные модели OpenRouter)
+    # Модели, которые не работают, деактивированы по умолчанию
     cursor.execute("""
         INSERT OR IGNORE INTO models (name, api_url, api_id, model_type, is_active) VALUES
         ('Llama 3.3 70B', 'https://openrouter.ai/api/v1/chat/completions', 'OPENROUTER_API_KEY', 'openrouter', 1),
         ('Mistral 7B', 'https://openrouter.ai/api/v1/chat/completions', 'OPENROUTER_API_KEY', 'openrouter', 1),
-        ('OpenAI GPT-OSS', 'https://openrouter.ai/api/v1/chat/completions', 'OPENROUTER_API_KEY', 'openrouter', 1),
-        ('Qwen3', 'https://openrouter.ai/api/v1/chat/completions', 'OPENROUTER_API_KEY', 'openrouter', 1)
+        ('OpenAI GPT-OSS', 'https://openrouter.ai/api/v1/chat/completions', 'OPENROUTER_API_KEY', 'openrouter', 0),
+        ('Qwen3', 'https://openrouter.ai/api/v1/chat/completions', 'OPENROUTER_API_KEY', 'openrouter', 0)
     """)
     
     # Инициализация настроек по умолчанию

@@ -18,6 +18,7 @@ class RequestThread(QThread):
     """Поток для асинхронной отправки запросов к API."""
     finished = pyqtSignal(list)  # Сигнал с результатами
     progress = pyqtSignal(int, dict)  # Сигнал прогресса (model_id, result)
+    status_update = pyqtSignal(str)  # Сигнал для обновления статуса
     
     def __init__(self, prompt: str, model_ids: Optional[List[int]] = None):
         super().__init__()
@@ -26,14 +27,94 @@ class RequestThread(QThread):
     
     def run(self):
         """Выполняет отправку запросов к моделям."""
-        results = model.send_prompt_to_models(self.prompt, self.model_ids)
+        import concurrent.futures
+        import threading
         
-        # Отправляем результаты по мере получения
-        for result in results:
-            self.progress.emit(result['model_id'], result)
+        # Получаем список моделей
+        if self.model_ids:
+            models = [db.get_model(mid) for mid in self.model_ids if db.get_model(mid)]
+        else:
+            models = model.get_active_models()
+        
+        if not models:
+            self.finished.emit([])
+            return
+        
+        results = []
+        completed = 0
+        total = len(models)
+        
+        # Отправляем запросы параллельно
+        with concurrent.futures.ThreadPoolExecutor(max_workers=total) as executor:
+            # Создаем задачи для каждой модели
+            future_to_model = {}
+            for model_data in models:
+                future = executor.submit(self._send_single_request, model_data, self.prompt)
+                future_to_model[future] = model_data
+            
+            # Обрабатываем результаты по мере их получения
+            for future in concurrent.futures.as_completed(future_to_model):
+                model_data = future_to_model[future]
+                try:
+                    result = future.result()
+                    completed += 1
+                    self.status_update.emit(f"Получен ответ от {model_data['name']} ({completed}/{total})")
+                    self.progress.emit(result['model_id'], result)
+                    results.append(result)
+                except Exception as e:
+                    # Обрабатываем ошибки
+                    result = {
+                        'model_id': model_data['id'],
+                        'model_name': model_data['name'],
+                        'response': None,
+                        'error': str(e),
+                        'tokens_used': None,
+                        'response_time': None
+                    }
+                    completed += 1
+                    self.status_update.emit(f"Ошибка для {model_data['name']} ({completed}/{total})")
+                    self.progress.emit(result['model_id'], result)
+                    results.append(result)
         
         # Отправляем все результаты
         self.finished.emit(results)
+    
+    def _send_single_request(self, model_data: Dict, prompt: str) -> Dict:
+        """Отправляет запрос к одной модели."""
+        self.status_update.emit(f"Отправка запроса к {model_data['name']}...")
+        
+        model_result = {
+            'model_id': model_data['id'],
+            'model_name': model_data['name'],
+            'response': None,
+            'error': None,
+            'tokens_used': None,
+            'response_time': None
+        }
+        
+        # Валидация настроек модели
+        is_valid, error_msg = model.validate_model_settings(model_data)
+        if not is_valid:
+            model_result['error'] = error_msg
+            return model_result
+        
+        # Отправка запроса
+        try:
+            # Для OpenRouter используем маппинг имен моделей
+            if model_data['model_type'] == 'openrouter' and model_data['name'] in model.OPENROUTER_MODEL_MAP:
+                model_for_api = model_data.copy()
+                model_for_api['name'] = model.OPENROUTER_MODEL_MAP[model_data['name']]
+                response_data = model.send_request_to_model(model_for_api, prompt)
+            else:
+                response_data = model.send_request_to_model(model_data, prompt)
+            
+            model_result['response'] = response_data.get('response')
+            model_result['tokens_used'] = response_data.get('tokens_used')
+            model_result['response_time'] = response_data.get('response_time')
+        except Exception as e:
+            model_result['error'] = str(e)
+        
+        return model_result
 
 
 class MainWindow(QMainWindow):
@@ -140,9 +221,18 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(prompt_group)
         
         # === Индикатор загрузки ===
+        progress_layout = QVBoxLayout()
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
-        main_layout.addWidget(self.progress_bar)
+        self.progress_bar.setFormat("%p% (%v/%m)")
+        self.progress_status_label = QLabel("")
+        self.progress_status_label.setVisible(False)
+        self.progress_status_label.setStyleSheet("color: #666; font-style: italic;")
+        progress_layout.addWidget(self.progress_bar)
+        progress_layout.addWidget(self.progress_status_label)
+        progress_widget = QWidget()
+        progress_widget.setLayout(progress_layout)
+        main_layout.addWidget(progress_widget)
         
         # === Таблица результатов ===
         results_label = QLabel("Результаты:")
@@ -272,10 +362,13 @@ class MainWindow(QMainWindow):
         self.progress_bar.setMaximum(len(active_models))
         self.progress_bar.setValue(0)
         self.progress_bar.setVisible(True)
+        self.progress_status_label.setText("Инициализация запросов...")
+        self.progress_status_label.setVisible(True)
         
         # Запускаем поток для отправки запросов
         self.request_thread = RequestThread(prompt_text)
         self.request_thread.progress.connect(self.on_result_received)
+        self.request_thread.status_update.connect(self.on_status_update)
         self.request_thread.finished.connect(self.on_requests_finished)
         self.request_thread.start()
     
@@ -310,11 +403,18 @@ class MainWindow(QMainWindow):
         self.results_table.setItem(row, 2, response_item)
         
         # Обновляем прогресс
-        self.progress_bar.setValue(self.progress_bar.value() + 1)
+        current_value = self.progress_bar.value()
+        self.progress_bar.setValue(current_value + 1)
+    
+    def on_status_update(self, status: str):
+        """Обработчик обновления статуса."""
+        self.progress_status_label.setText(status)
     
     def on_requests_finished(self, results: List[Dict]):
         """Обработчик завершения всех запросов."""
         self.progress_bar.setVisible(False)
+        self.progress_status_label.setVisible(False)
+        self.progress_status_label.setText("")
         self.send_button.setEnabled(True)
         self.save_button.setEnabled(True)
         self.save_bottom_button.setEnabled(True)

@@ -13,10 +13,10 @@ OPENROUTER_MODEL_MAP = {
     'Llama 3.3 70B': 'meta-llama/llama-3.3-70b-instruct:free',
     'Mistral 7B': 'mistralai/mistral-7b-instruct:free',
     # ВНИМАНИЕ: Следующие модели могут не работать или требовать оплаты
-    # Проверьте актуальные идентификаторы на https://openrouter.ai/models
-    # И найдите модели с пометкой "free" для бесплатного использования
-    'OpenAI GPT-OSS': 'openai/gpt-oss-120b:free',  # Может требовать оплату
-    'Qwen3': 'qwen/qwen3-coder:free'  # Может требовать оплату
+    # Обновлено на основе логов - используем рабочие идентификаторы
+    # Если модель не работает, деактивируйте её через интерфейс управления моделями
+    'OpenAI GPT-OSS': 'openai/gpt-3.5-turbo',  # Используем gpt-3.5-turbo вместо несуществующего gpt-oss-120b
+    'Qwen3': 'qwen/qwen-2.5-7b-instruct'  # Используем правильный идентификатор без :free
 }
 
 
