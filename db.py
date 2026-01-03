@@ -78,12 +78,13 @@ def init_database():
     """)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(key)")
     
-    # Инициализация моделей по умолчанию
+    # Инициализация моделей по умолчанию (только бесплатные модели OpenRouter)
     cursor.execute("""
         INSERT OR IGNORE INTO models (name, api_url, api_id, model_type, is_active) VALUES
-        ('GPT-4', 'https://api.openai.com/v1/chat/completions', 'OPENAI_API_KEY', 'openai', 1),
-        ('GPT-3.5', 'https://api.openai.com/v1/chat/completions', 'OPENAI_API_KEY', 'openai', 1),
-        ('Llama 3 70B', 'https://api.groq.com/openai/v1/chat/completions', 'GROQ_API_KEY', 'groq', 1)
+        ('Llama 3.3 70B', 'https://openrouter.ai/api/v1/chat/completions', 'OPENROUTER_API_KEY', 'openrouter', 1),
+        ('Mistral 7B', 'https://openrouter.ai/api/v1/chat/completions', 'OPENROUTER_API_KEY', 'openrouter', 1),
+        ('OpenAI GPT-OSS', 'https://openrouter.ai/api/v1/chat/completions', 'OPENROUTER_API_KEY', 'openrouter', 1),
+        ('Qwen3', 'https://openrouter.ai/api/v1/chat/completions', 'OPENROUTER_API_KEY', 'openrouter', 1)
     """)
     
     # Инициализация настроек по умолчанию
@@ -276,17 +277,25 @@ def delete_model(model_id: int) -> bool:
 def create_result(prompt_id: int, model_id: int, response: str,
                   tokens_used: Optional[int] = None, response_time: Optional[float] = None) -> int:
     """Создает новый результат и возвращает его ID."""
+    if not response or not response.strip():
+        raise ValueError("Response cannot be empty")
+    
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO results (prompt_id, model_id, response, tokens_used, response_time, saved_date)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (prompt_id, model_id, response, tokens_used, response_time,
-          datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-    result_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
-    return result_id
+    try:
+        cursor.execute("""
+            INSERT INTO results (prompt_id, model_id, response, tokens_used, response_time, saved_date)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (prompt_id, model_id, response, tokens_used, response_time,
+              datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        result_id = cursor.lastrowid
+        conn.commit()
+        return result_id
+    except Exception as e:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def get_result(result_id: int) -> Optional[Dict]:

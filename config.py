@@ -56,6 +56,12 @@ DEFAULT_MODEL_CONFIGS = {
             'Content-Type': 'application/json',
         },
         'model_field': 'model',
+    },
+    'openrouter': {
+        'headers': {
+            'Content-Type': 'application/json',
+        },
+        'model_field': 'model',
     }
 }
 

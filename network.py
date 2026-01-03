@@ -6,6 +6,7 @@ import requests
 import time
 from typing import Dict, Optional, Any
 from config import get_api_key, get_timeout, DEFAULT_MODEL_CONFIGS
+import logger
 
 
 class APIError(Exception):
@@ -60,15 +61,21 @@ def send_openai_request(model_name: str, prompt: str, api_key: str,
         content = data['choices'][0]['message']['content']
         tokens_used = data.get('usage', {}).get('total_tokens')
         
-        return {
+        result = {
             'response': content,
             'tokens_used': tokens_used,
             'response_time': response_time
         }
+        logger.log_api_request(model_name, prompt, True, tokens_used=tokens_used, response_time=response_time)
+        return result
     except requests.exceptions.RequestException as e:
-        raise APIError(f"OpenAI API error: {str(e)}")
+        error_msg = f"OpenAI API error: {str(e)}"
+        logger.log_api_request(model_name, prompt, False, error=error_msg)
+        raise APIError(error_msg)
     except (KeyError, IndexError) as e:
-        raise APIError(f"Unexpected response format from OpenAI API: {str(e)}")
+        error_msg = f"Unexpected response format from OpenAI API: {str(e)}"
+        logger.log_api_request(model_name, prompt, False, error=error_msg)
+        raise APIError(error_msg)
 
 
 def send_groq_request(model_name: str, prompt: str, api_key: str,
@@ -118,15 +125,87 @@ def send_groq_request(model_name: str, prompt: str, api_key: str,
         content = data['choices'][0]['message']['content']
         tokens_used = data.get('usage', {}).get('total_tokens')
         
-        return {
+        result = {
             'response': content,
             'tokens_used': tokens_used,
             'response_time': response_time
         }
+        logger.log_api_request(model_name, prompt, True, tokens_used=tokens_used, response_time=response_time)
+        return result
     except requests.exceptions.RequestException as e:
-        raise APIError(f"Groq API error: {str(e)}")
+        error_msg = f"Groq API error: {str(e)}"
+        logger.log_api_request(model_name, prompt, False, error=error_msg)
+        raise APIError(error_msg)
     except (KeyError, IndexError) as e:
-        raise APIError(f"Unexpected response format from Groq API: {str(e)}")
+        error_msg = f"Unexpected response format from Groq API: {str(e)}"
+        logger.log_api_request(model_name, prompt, False, error=error_msg)
+        raise APIError(error_msg)
+
+
+def send_openrouter_request(model_name: str, prompt: str, api_key: str,
+                           timeout: Optional[int] = None) -> Dict[str, Any]:
+    """
+    Отправляет запрос к OpenRouter API.
+    
+    Args:
+        model_name: Название модели (например, 'meta-llama/llama-3.3-70b-instruct:free')
+        prompt: Текст промта
+        api_key: API-ключ OpenRouter
+        timeout: Таймаут запроса в секундах
+    
+    Returns:
+        Словарь с ответом API, содержащий:
+        - 'response': текст ответа
+        - 'tokens_used': количество использованных токенов
+        - 'response_time': время ответа в секундах
+    
+    Raises:
+        APIError: При ошибке запроса
+    """
+    if timeout is None:
+        timeout = get_timeout()
+    
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+        "HTTP-Referer": "https://github.com/your-repo",  # Опционально, для отслеживания
+        "X-Title": "Chatlist App"  # Опционально
+    }
+    
+    payload = {
+        "model": model_name,
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
+    }
+    
+    start_time = time.time()
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=timeout)
+        response.raise_for_status()
+        response_time = time.time() - start_time
+        
+        data = response.json()
+        content = data['choices'][0]['message']['content']
+        tokens_used = data.get('usage', {}).get('total_tokens')
+        
+        result = {
+            'response': content,
+            'tokens_used': tokens_used,
+            'response_time': response_time
+        }
+        logger.log_api_request(model_name, prompt, True, tokens_used=tokens_used, response_time=response_time)
+        return result
+    except requests.exceptions.RequestException as e:
+        error_msg = f"OpenRouter API error: {str(e)}"
+        logger.log_api_request(model_name, prompt, False, error=error_msg)
+        raise APIError(error_msg)
+    except (KeyError, IndexError) as e:
+        error_msg = f"Unexpected response format from OpenRouter API: {str(e)}"
+        logger.log_api_request(model_name, prompt, False, error=error_msg)
+        raise APIError(error_msg)
 
 
 def send_request(model_type: str, model_name: str, prompt: str, api_key: str,
@@ -135,7 +214,7 @@ def send_request(model_type: str, model_name: str, prompt: str, api_key: str,
     Универсальная функция для отправки запросов к разным API.
     
     Args:
-        model_type: Тип API ('openai', 'groq', и т.д.)
+        model_type: Тип API ('openai', 'groq', 'openrouter', и т.д.)
         model_name: Название модели
         prompt: Текст промта
         api_key: API-ключ
@@ -151,6 +230,8 @@ def send_request(model_type: str, model_name: str, prompt: str, api_key: str,
         return send_openai_request(model_name, prompt, api_key, timeout)
     elif model_type == 'groq':
         return send_groq_request(model_name, prompt, api_key, timeout)
+    elif model_type == 'openrouter':
+        return send_openrouter_request(model_name, prompt, api_key, timeout)
     else:
         raise APIError(f"Unsupported model type: {model_type}")
 

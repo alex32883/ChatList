@@ -6,6 +6,19 @@ from typing import List, Dict, Optional, Tuple
 import db
 from network import send_request_to_model, APIError
 
+# Маппинг отображаемых имен моделей на реальные идентификаторы для OpenRouter
+# Проверьте актуальные модели на https://openrouter.ai/models
+# Для бесплатных моделей добавьте :free в конец идентификатора
+OPENROUTER_MODEL_MAP = {
+    'Llama 3.3 70B': 'meta-llama/llama-3.3-70b-instruct:free',
+    'Mistral 7B': 'mistralai/mistral-7b-instruct:free',
+    # ВНИМАНИЕ: Следующие модели могут не работать или требовать оплаты
+    # Проверьте актуальные идентификаторы на https://openrouter.ai/models
+    # И найдите модели с пометкой "free" для бесплатного использования
+    'OpenAI GPT-OSS': 'openai/gpt-3.5-turbo',  # Может требовать оплату
+    'Qwen3': 'qwen/qwen-2.5-7b-instruct'  # Может требовать оплату
+}
+
 
 def get_active_models() -> List[Dict]:
     """
@@ -46,7 +59,7 @@ def validate_model_settings(model_info: Dict) -> Tuple[bool, Optional[str]]:
             return False, f"Missing required field: {field}"
     
     model_type = model_info['model_type']
-    supported_types = ['openai', 'groq']
+    supported_types = ['openai', 'groq', 'openrouter']
     
     if model_type not in supported_types:
         return False, f"Unsupported model type: {model_type}. Supported types: {', '.join(supported_types)}"
@@ -103,7 +116,14 @@ def send_prompt_to_models(prompt: str, model_ids: Optional[List[int]] = None) ->
         
         # Отправка запроса
         try:
-            response_data = send_request_to_model(model, prompt)
+            # Для OpenRouter используем маппинг имен моделей
+            if model['model_type'] == 'openrouter' and model['name'] in OPENROUTER_MODEL_MAP:
+                # Создаем временную копию модели с правильным именем для API
+                model_for_api = model.copy()
+                model_for_api['name'] = OPENROUTER_MODEL_MAP[model['name']]
+                response_data = send_request_to_model(model_for_api, prompt)
+            else:
+                response_data = send_request_to_model(model, prompt)
             model_result['response'] = response_data.get('response')
             model_result['tokens_used'] = response_data.get('tokens_used')
             model_result['response_time'] = response_data.get('response_time')
