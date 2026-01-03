@@ -5,7 +5,7 @@ import sys
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTextEdit, QPushButton, QTableWidget, QTableWidgetItem, QComboBox,
-    QLabel, QCheckBox, QMessageBox, QHeaderView, QProgressBar, QFileDialog, QMenuBar, QAction
+    QLabel, QCheckBox, QMessageBox, QHeaderView, QProgressBar, QFileDialog, QMenuBar, QAction, QDialog, QDialogButtonBox
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from typing import List, Dict, Optional
@@ -250,6 +250,7 @@ class MainWindow(QMainWindow):
         
         self.results_table.setAlternatingRowColors(True)
         self.results_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.results_table.itemSelectionChanged.connect(self.on_selection_changed)
         main_layout.addWidget(self.results_table)
         
         # === Кнопки управления результатами ===
@@ -258,7 +259,12 @@ class MainWindow(QMainWindow):
         self.save_button.clicked.connect(self.save_selected_results)
         self.save_button.setEnabled(False)
         
+        self.open_button = QPushButton("Открыть")
+        self.open_button.clicked.connect(self.open_selected_answer)
+        self.open_button.setEnabled(False)
+        
         results_buttons_layout.addWidget(self.save_button)
+        results_buttons_layout.addWidget(self.open_button)
         results_buttons_layout.addStretch()
         main_layout.addLayout(results_buttons_layout)
         
@@ -351,6 +357,7 @@ class MainWindow(QMainWindow):
         # Блокируем кнопки
         self.send_button.setEnabled(False)
         self.save_button.setEnabled(False)
+        self.open_button.setEnabled(False)
         self.save_bottom_button.setEnabled(False)
         self.export_md_button.setEnabled(False)
         self.export_json_button.setEnabled(False)
@@ -417,6 +424,7 @@ class MainWindow(QMainWindow):
         self.progress_status_label.setText("")
         self.send_button.setEnabled(True)
         self.save_button.setEnabled(True)
+        self.open_button.setEnabled(True)
         self.save_bottom_button.setEnabled(True)
         self.export_md_button.setEnabled(True)
         self.export_json_button.setEnabled(True)
@@ -425,6 +433,40 @@ class MainWindow(QMainWindow):
         
         if not results:
             QMessageBox.information(self, "Информация", "Нет активных моделей для отправки запросов.")
+    
+    def on_selection_changed(self):
+        """Обработчик изменения выбора в таблице."""
+        selected_rows = self.results_table.selectionModel().selectedRows()
+        self.open_button.setEnabled(len(selected_rows) > 0)
+    
+    def open_selected_answer(self):
+        """Открывает выбранный ответ в markdown формате."""
+        selected_rows = self.results_table.selectionModel().selectedRows()
+        
+        if not selected_rows:
+            QMessageBox.warning(self, "Предупреждение", "Выберите строку с ответом для просмотра.")
+            return
+        
+        row = selected_rows[0].row()
+        
+        # Получаем название модели
+        model_name_item = self.results_table.item(row, 1)
+        if not model_name_item:
+            QMessageBox.warning(self, "Ошибка", "Не удалось получить информацию о модели.")
+            return
+        
+        model_name = model_name_item.text()
+        
+        # Находим результат во временной таблице
+        result = next((r for r in self.temp_results if r['model_name'] == model_name), None)
+        
+        if not result:
+            QMessageBox.warning(self, "Ошибка", "Результат не найден.")
+            return
+        
+        # Открываем диалоговое окно с markdown
+        dialog = MarkdownViewDialog(self, result, self.prompt_input.toPlainText())
+        dialog.exec_()
     
     def save_selected_results(self):
         """Сохраняет выбранные результаты в БД."""
@@ -494,6 +536,7 @@ class MainWindow(QMainWindow):
             self.temp_results = []
             self.results_table.setRowCount(0)
             self.save_button.setEnabled(False)
+            self.open_button.setEnabled(False)
             self.save_bottom_button.setEnabled(False)
             self.export_md_button.setEnabled(False)
             self.export_json_button.setEnabled(False)
@@ -513,6 +556,7 @@ class MainWindow(QMainWindow):
         self.current_prompt_id = None
         self.saved_prompts_combo.setCurrentIndex(0)
         self.save_button.setEnabled(False)
+        self.open_button.setEnabled(False)
         self.save_bottom_button.setEnabled(False)
         self.export_md_button.setEnabled(False)
         self.export_json_button.setEnabled(False)
@@ -533,6 +577,7 @@ class MainWindow(QMainWindow):
             self.temp_results = []
             self.results_table.setRowCount(0)
             self.save_button.setEnabled(False)
+            self.open_button.setEnabled(False)
             self.save_bottom_button.setEnabled(False)
             self.export_md_button.setEnabled(False)
             self.export_json_button.setEnabled(False)
@@ -619,6 +664,82 @@ class MainWindow(QMainWindow):
         }
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(export_data, f, ensure_ascii=False, indent=2)
+
+
+class MarkdownViewDialog(QDialog):
+    """Диалоговое окно для просмотра ответа в markdown формате."""
+    
+    def __init__(self, parent=None, result: Dict = None, prompt: str = ""):
+        super().__init__(parent)
+        self.setWindowTitle(f"Ответ от {result['model_name']}")
+        self.setGeometry(200, 200, 900, 700)
+        self.result = result
+        self.prompt = prompt
+        self.init_ui()
+    
+    def init_ui(self):
+        """Инициализация интерфейса."""
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+        
+        # Заголовок с информацией о модели
+        header_label = QLabel(f"<h2>Ответ от: {self.result['model_name']}</h2>")
+        layout.addWidget(header_label)
+        
+        # Промт (если есть)
+        if self.prompt:
+            prompt_label = QLabel("<b>Промт:</b>")
+            layout.addWidget(prompt_label)
+            prompt_text = QTextEdit()
+            prompt_text.setPlainText(self.prompt)
+            prompt_text.setReadOnly(True)
+            prompt_text.setMaximumHeight(80)
+            prompt_text.setStyleSheet("background-color: #f5f5f5;")
+            layout.addWidget(prompt_text)
+        
+        # Ответ в markdown формате
+        response_label = QLabel("<b>Ответ:</b>")
+        layout.addWidget(response_label)
+        
+        response_text = QTextEdit()
+        response_text.setReadOnly(True)
+        
+        # Форматируем ответ как markdown
+        if self.result.get('error'):
+            markdown_content = f"## Ошибка\n\n**{self.result['error']}**"
+        else:
+            response = self.result.get('response', 'Нет ответа')
+            markdown_content = response
+            
+            # Добавляем метаданные в конец
+            metadata = []
+            if self.result.get('tokens_used'):
+                metadata.append(f"**Токенов использовано:** {self.result['tokens_used']}")
+            if self.result.get('response_time'):
+                metadata.append(f"**Время ответа:** {self.result['response_time']:.2f} сек")
+            
+            if metadata:
+                markdown_content += f"\n\n---\n\n" + " | ".join(metadata)
+        
+        # Устанавливаем markdown контент
+        response_text.setMarkdown(markdown_content)
+        
+        # Настройка стилей для лучшего отображения
+        response_text.setStyleSheet("""
+            QTextEdit {
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 11pt;
+                line-height: 1.6;
+                padding: 10px;
+            }
+        """)
+        
+        layout.addWidget(response_text)
+        
+        # Кнопки
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok)
+        button_box.accepted.connect(self.accept)
+        layout.addWidget(button_box)
 
 
 def main():
