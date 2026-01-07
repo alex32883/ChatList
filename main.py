@@ -147,6 +147,13 @@ class MainWindow(QMainWindow):
         models_action = QAction("Управление моделями", self)
         models_action.triggered.connect(self.open_models_window)
         settings_menu.addAction(models_action)
+        
+        # Меню "Просмотр"
+        view_menu = menubar.addMenu("Просмотр")
+        
+        saved_results_action = QAction("Сохраненные результаты", self)
+        saved_results_action.triggered.connect(self.open_saved_results_window)
+        view_menu.addAction(saved_results_action)
     
     def open_models_window(self):
         """Открывает окно управления моделями."""
@@ -155,6 +162,12 @@ class MainWindow(QMainWindow):
         window.exec_()
         # Обновляем список моделей после закрытия окна
         logger.log_info("Models window closed, models may have been updated")
+    
+    def open_saved_results_window(self):
+        """Открывает окно просмотра сохраненных результатов."""
+        from saved_results_window import SavedResultsWindow
+        window = SavedResultsWindow(self)
+        window.exec_()
     
     def init_ui(self):
         """Инициализация пользовательского интерфейса."""
