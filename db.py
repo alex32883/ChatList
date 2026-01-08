@@ -102,7 +102,9 @@ def init_database():
     default_settings = [
         ('default_timeout', '30'),
         ('auto_save_prompts', 'false'),
-        ('export_format', 'markdown')
+        ('export_format', 'markdown'),
+        ('theme', 'light'),
+        ('font_size', '10')
     ]
     for key, value in default_settings:
         cursor.execute("""
