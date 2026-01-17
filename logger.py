@@ -5,6 +5,7 @@ import logging
 import os
 from datetime import datetime
 from typing import Optional
+from version import __version__
 
 # Настройка логирования
 LOG_DIR = "logs"
@@ -35,6 +36,9 @@ logger = logging.getLogger('Chatlist')
 logger.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
+
+# Логируем версию при инициализации
+logger.info(f"Chatlist version {__version__} initialized")
 
 
 def log_api_request(model_name: str, prompt: str, success: bool, 

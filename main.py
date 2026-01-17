@@ -15,6 +15,7 @@ import db
 import model
 from network import send_request_to_model
 import logger
+from version import __version__
 
 
 class RequestThread(QThread):
@@ -123,7 +124,7 @@ class RequestThread(QThread):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Chatlist - Сравнение ответов нейросетей")
+        self.setWindowTitle(f"Chatlist - Сравнение ответов нейросетей v{__version__}")
         self.setGeometry(100, 100, 1400, 800)
         
         # Устанавливаем иконку окна
@@ -455,9 +456,9 @@ class MainWindow(QMainWindow):
     
     def show_about(self):
         """Показывает диалоговое окно 'О программе'."""
-        about_text = """
+        about_text = f"""
         <h2>Chatlist</h2>
-        <p><b>Версия:</b> 1.0.0</p>
+        <p><b>Версия:</b> {__version__}</p>
         <p><b>Описание:</b></p>
         <p>Приложение для отправки одного промта в несколько нейросетей и сравнения их ответов.</p>
         <p><b>Возможности:</b></p>

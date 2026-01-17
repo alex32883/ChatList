@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-import os
+
 
 a = Analysis(
     ['main.py'],
@@ -35,5 +35,4 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='app.ico' if os.path.exists('app.ico') else None,
 )
