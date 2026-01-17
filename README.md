@@ -85,3 +85,44 @@ pyinstaller --onefile --windowed --name "Chatlist" main.py
 
 Исполняемый файл будет находиться в папке `dist`.
 
+## 📦 Скачать последнюю версию
+
+- **Windows Installer**: [Скачать с GitHub Releases](https://github.com/YOUR_USERNAME/Chatlist/releases/latest)
+- **Все версии**: [GitHub Releases](https://github.com/YOUR_USERNAME/Chatlist/releases)
+
+## 🌐 GitHub Pages
+
+Посетите наш сайт: [https://YOUR_USERNAME.github.io/Chatlist/](https://YOUR_USERNAME.github.io/Chatlist/)
+
+## 📚 Документация
+
+- [Инструкция по публикации на GitHub Release](GITHUB_RELEASE_GUIDE.md)
+- [Настройка GitHub Pages](GITHUB_PAGES_SETUP.md)
+- [История изменений](CHANGELOG.md)
+
+## 🔧 Разработка
+
+### Сборка инсталлятора
+
+```bash
+# Сборка инсталлятора с автоматическим обновлением версии
+build_installer.bat
+```
+
+### Создание Release
+
+1. Обновите версию в `version.py`
+2. Создайте тег: `git tag -a v1.0.1 -m "Release version 1.0.1"`
+3. Запушьте тег: `git push origin v1.0.1`
+4. GitHub Actions автоматически создаст Release (если настроен)
+
+Подробнее см. [GITHUB_RELEASE_GUIDE.md](GITHUB_RELEASE_GUIDE.md)
+
+## 📝 Лицензия
+
+Укажите лицензию вашего проекта здесь.
+
+## 🤝 Вклад в проект
+
+Приветствуются любые вклады в проект! Пожалуйста, создавайте Issues и Pull Requests.
+

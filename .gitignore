@@ -25,17 +25,6 @@ venv/
 ENV/
 env/
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
-chatlist.db
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-
 # IDE
 .vscode/
 .idea/
@@ -47,26 +36,29 @@ chatlist.db
 logs/
 *.log
 
+# Database
+*.db
+*.sqlite
+
+# Environment variables
+.env
+.env.local
+
+# Build artifacts
+installer/
+*.exe
+*.spec.bak
+build_exe.bat.bak
+
+# Temporary files
+temp_version.txt
+setup_temp.iss
+*.iss.bak
+
+# PyInstaller
+*.manifest
+*.spec
+
 # OS
 .DS_Store
 Thumbs.db
-
-# Build files
-*.spec
-build/
-dist/
-*.exe
-
-# Temporary files
-*.tmp
-*.temp
-*.md.bak
-
-# Test files
-test_*.py
-*_test.py
-
-
-
-
-

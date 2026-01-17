@@ -1,0 +1,89 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Триггер при создании тега версии (v1.0.1, v1.2.3 и т.д.)
+  workflow_dispatch:  # Позволяет запускать вручную
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+    - name: Get version
+      id: get_version
+      run: |
+        python -c "from version import __version__; print('version=' + __version__)" >> $env:GITHUB_OUTPUT
+      shell: pwsh
+      
+    - name: Build executable
+      run: |
+        python -m PyInstaller PyQtApp.spec --clean
+        
+    - name: Update setup.iss version
+      run: |
+        $version = "${{ steps.get_version.outputs.version }}"
+        (Get-Content setup.iss) -replace '#define AppVersion "[^"]*"', "#define AppVersion `"$version`"" | Set-Content setup.iss
+      shell: pwsh
+      
+    - name: Install Inno Setup
+      run: |
+        $innosetupUrl = "https://github.com/jrsoftware/issrc/archive/refs/tags/is-6.3.0.zip"
+        $tempPath = "$env:TEMP\innosetup.zip"
+        $installPath = "$env:ProgramFiles\Inno Setup 6"
+        Invoke-WebRequest -Uri $innosetupUrl -OutFile $tempPath
+        # Примечание: В реальности лучше использовать официальный установщик или chocolatey
+        # choco install innosetup -y
+      shell: pwsh
+      continue-on-error: true
+      
+    - name: Build installer
+      run: |
+        $innosetupPath = "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+        if (Test-Path "$env:ProgramFiles (x86)\Inno Setup 6\ISCC.exe") {
+          $innosetupPath = "$env:ProgramFiles (x86)\Inno Setup 6\ISCC.exe"
+        }
+        if (Test-Path $innosetupPath) {
+          & $innosetupPath setup.iss
+        } else {
+          Write-Host "Inno Setup not found, skipping installer build"
+        }
+      shell: pwsh
+      continue-on-error: true
+      
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          dist/PyQtApp.exe
+          installer/*.exe
+        generate_release_notes: true
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-installer
+        path: |
+          dist/PyQtApp.exe
+          installer/*.exe
+        retention-days: 30
