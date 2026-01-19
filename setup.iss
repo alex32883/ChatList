@@ -74,18 +74,36 @@ Type: filesandordirs; Name: "{app}\logs"
 
 ; Код для деинсталляции
 [Code]
+function InitializeSetup(): Boolean;
+var
+  UserDataPath: String;
+  EnvExamplePath: String;
+begin
+  // Создаем папку пользовательских данных
+  UserDataPath := ExpandConstant('{localappdata}\Chatlist');
+  if not DirExists(UserDataPath) then
+    CreateDir(UserDataPath);
+  
+  // Копируем .env.example если существует
+  EnvExamplePath := UserDataPath + '\.env.example';
+  if FileExists(ExpandConstant('{src}\.env.example')) then
+    CopyFile(ExpandConstant('{src}\.env.example'), EnvExamplePath, False);
+  
+  Result := True;
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  AppPath: String;
+  UserDataPath: String;
   LogsPath: String;
   DatabasePath: String;
 begin
   if CurUninstallStep = usUninstall then
   begin
-    // Получаем путь установки приложения
-    AppPath := ExpandConstant('{app}');
-    LogsPath := AppPath + '\logs';
-    DatabasePath := AppPath + '\chatlist.db';
+    // Получаем путь к папке пользовательских данных
+    UserDataPath := ExpandConstant('{localappdata}\Chatlist');
+    LogsPath := UserDataPath + '\logs';
+    DatabasePath := UserDataPath + '\chatlist.db';
     
     // Удаляем базу данных (если пользователь хочет сохранить данные, он может отменить деинсталляцию)
     if FileExists(DatabasePath) then
@@ -94,6 +112,10 @@ begin
     // Удаляем логи
     if DirExists(LogsPath) then
       DelTree(LogsPath, True, True, True);
+    
+    // Удаляем папку пользовательских данных, если она пуста
+    if DirExists(UserDataPath) then
+      RemoveDir(UserDataPath);
   end;
 end;
 

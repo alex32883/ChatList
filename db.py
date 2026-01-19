@@ -6,14 +6,13 @@ import sqlite3
 import os
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
-
-
-DB_FILE = "chatlist.db"
+from paths import get_db_file
 
 
 def get_connection():
     """Создает и возвращает соединение с базой данных."""
-    conn = sqlite3.connect(DB_FILE)
+    db_file = get_db_file()
+    conn = sqlite3.connect(db_file)
     conn.row_factory = sqlite3.Row  # Для доступа к колонкам по имени
     return conn
 

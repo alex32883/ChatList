@@ -129,12 +129,10 @@ class MainWindow(QMainWindow):
         
         # Устанавливаем иконку окна
         try:
-            icon_path = "app.ico"
-            if os.path.exists(icon_path):
+            from paths import get_icon_path
+            icon_path = get_icon_path()
+            if icon_path:
                 self.setWindowIcon(QIcon(icon_path))
-            else:
-                # Пытаемся использовать ресурсы PyQt5 если иконка не найдена
-                pass
         except Exception as e:
             logger.log_error(f"Error setting window icon: {str(e)}")
         
@@ -1080,11 +1078,12 @@ def main():
     
     # Устанавливаем иконку приложения
     try:
-        icon_path = "app.ico"
-        if os.path.exists(icon_path):
+        from paths import get_icon_path
+        icon_path = get_icon_path()
+        if icon_path:
             app.setWindowIcon(QIcon(icon_path))
         else:
-            logger.log_info(f"Icon file '{icon_path}' not found, using default icon")
+            logger.log_info(f"Icon file not found, using default icon")
     except Exception as e:
         logger.log_error(f"Error loading icon: {str(e)}")
     

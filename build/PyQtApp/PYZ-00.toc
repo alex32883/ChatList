@@ -522,6 +522,7 @@
    'PYMODULE'),
   ('pathlib', 'C:\\Python314\\Lib\\pathlib\\__init__.py', 'PYMODULE'),
   ('pathlib._os', 'C:\\Python314\\Lib\\pathlib\\_os.py', 'PYMODULE'),
+  ('paths', 'C:\\Work\\CursorAI\\ChatList\\paths.py', 'PYMODULE'),
   ('pickle', 'C:\\Python314\\Lib\\pickle.py', 'PYMODULE'),
   ('pkgutil', 'C:\\Python314\\Lib\\pkgutil.py', 'PYMODULE'),
   ('platform', 'C:\\Python314\\Lib\\platform.py', 'PYMODULE'),

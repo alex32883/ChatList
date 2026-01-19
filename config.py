@@ -5,9 +5,16 @@
 import os
 from dotenv import load_dotenv
 from typing import Optional
+from paths import get_env_file
 
 # Загружаем переменные окружения из .env файла
-load_dotenv()
+# Сначала пытаемся загрузить из пользовательской папки, затем из папки приложения
+env_file = get_env_file()
+if os.path.exists(env_file):
+    load_dotenv(env_file)
+else:
+    # Пытаемся загрузить из папки приложения (для портативной версии)
+    load_dotenv()
 
 
 def get_api_key(api_id: str) -> Optional[str]:

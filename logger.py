@@ -3,17 +3,31 @@
 """
 import logging
 import os
+import sys
 from datetime import datetime
 from typing import Optional
-from version import __version__
 
-# Настройка логирования
-LOG_DIR = "logs"
+# Импортируем версию
+try:
+    from version import __version__
+except ImportError:
+    __version__ = "1.0.1"
+
+# Импортируем функции для получения путей
+try:
+    from paths import get_log_dir
+    LOG_DIR = get_log_dir()
+except (ImportError, Exception) as e:
+    # Fallback на текущую директорию, если paths.py недоступен
+    LOG_DIR = os.path.join(os.path.expanduser("~"), "Chatlist", "logs")
+    try:
+        os.makedirs(LOG_DIR, exist_ok=True)
+    except Exception:
+        # Если и это не работает, используем временную папку
+        LOG_DIR = os.path.join(os.environ.get('TEMP', os.environ.get('TMP', '.')), 'Chatlist', 'logs')
+        os.makedirs(LOG_DIR, exist_ok=True)
+
 LOG_FILE = os.path.join(LOG_DIR, f"chatlist_{datetime.now().strftime('%Y%m%d')}.log")
-
-# Создаем директорию для логов, если её нет
-if not os.path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
 
 # Настройка форматтера
 formatter = logging.Formatter(
@@ -21,12 +35,7 @@ formatter = logging.Formatter(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-# Настройка файлового обработчика
-file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
-file_handler.setLevel(logging.INFO)
-file_handler.setFormatter(formatter)
-
-# Настройка консольного обработчика
+# Настройка консольного обработчика (всегда работает)
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.WARNING)
 console_handler.setFormatter(formatter)
@@ -34,11 +43,24 @@ console_handler.setFormatter(formatter)
 # Создаем логгер
 logger = logging.getLogger('Chatlist')
 logger.setLevel(logging.INFO)
-logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
-# Логируем версию при инициализации
-logger.info(f"Chatlist version {__version__} initialized")
+# Пытаемся добавить файловый обработчик (может не сработать при импорте)
+try:
+    file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+except (OSError, PermissionError, Exception) as e:
+    # Если не удалось создать файловый обработчик, используем только консольный
+    # Это может произойти при импорте модуля, когда папка еще не создана
+    pass
+
+# Логируем версию при инициализации (если файловый обработчик еще не добавлен, попробуем снова)
+try:
+    logger.info(f"Chatlist version {__version__} initialized")
+except Exception:
+    pass
 
 
 def log_api_request(model_name: str, prompt: str, success: bool, 
