@@ -1,0 +1,51 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main  # Запускается при push в main ветку
+    paths:
+      - 'docs/**'  # Или только при изменении файлов в docs/
+  workflow_dispatch:  # Позволяет запускать вручную
+
+# Настройка разрешений для GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Разрешаем один одновременный деплой
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: Prepare pages
+      run: |
+        # Копируем файлы из docs/ в _site
+        mkdir -p _site
+        cp -r docs/* _site/
+        # Убеждаемся, что .nojekyll присутствует
+        touch _site/.nojekyll
+        
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./_site
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
